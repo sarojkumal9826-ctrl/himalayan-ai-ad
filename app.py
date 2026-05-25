@@ -7,9 +7,10 @@ import tempfile
 import plotly.graph_objects as go
 import numpy as np
 import datetime
+import os
 
-# GEMINI API KEY: https://aistudio.google.com/app/apikey bata free ma linu
-genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+# Key HuggingFace Secrets bata lincha. Code ma kahile na lekh
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 
 st.set_page_config(page_title="Dance Kundali AI 💰", layout="wide")
 st.title("Dance Kundali AI - US RPM Booster 💃")
@@ -18,12 +19,10 @@ st.write("Dance video hal, ma cut, loop, hook, caption, hashtag + Dollar sabai b
 uploaded_file = st.file_uploader("Dance Video Upload Gar", type=["mp4", "mov", "mkv"])
 
 def analyze_video(video_path):
-    # 1. Beat Detect
     y, sr = librosa.load(video_path)
     tempo, beat_frames = librosa.beat.beat_track(y=y, sr=sr)
     beat_times = librosa.frames_to_time(beat_frames, sr=sr)
 
-    # 2. Pose + Energy Detect
     mp_pose = mp.solutions.pose
     pose = mp_pose.Pose(static_image_mode=False, min_detection_confidence=0.5)
     cap = cv2.VideoCapture(video_path)
@@ -37,11 +36,10 @@ def analyze_video(video_path):
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret: break
-        if frame_count % int(fps) == 0: # Har 1 sec
+        if frame_count % int(fps) == 0:
             results = pose.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
             if results.pose_landmarks:
                 lm = results.pose_landmarks.landmark
-                # Energy = wrist + ankle movement
                 lw = lm[mp_pose.PoseLandmark.LEFT_WRIST.value]
                 rw = lm[mp_pose.PoseLandmark.RIGHT_WRIST.value]
                 energy = (abs(lw.y - rw.y) + abs(lw.x - rw.x)) * 100
@@ -75,7 +73,7 @@ def generate_kundali(tempo, beats, energy, face, duration, audio, post_time):
     **2. CUT KAHAN GARNE:**
     - Boring Zone: {np.where(np.array(energy) < 30)[0].tolist()} second ma energy low cha. Yaha kaat.
     - Best Parts: {np.argsort(energy)[-3:].tolist()} second rakh. Baki faalda.
-    - Final Length: X sec banaune. Yo bhanda lamo bhaye drop hunchha.
+    - Final Length: X sec banaune.
 
     **3. PERFECT LOOP KAHAN:**
     - Last frame: {duration-0.5:.1f}s dekhi First frame 0.0s sanga match garne.
@@ -84,14 +82,14 @@ def generate_kundali(tempo, beats, energy, face, duration, audio, post_time):
     **4. US RPM KUNDALI:**
     - Estimated RPM: $X.XX - $X.XX per 1000 views
     - Why Low/High: 1 line reason
-    - 3 Fix for USA: Audio, Caption, Time exact bhan. Example: "Audio 'Espresso' ma change gar"
+    - 3 Fix for USA: Audio, Caption, Time exact bhan.
 
     **5. CAPTION + HASHTAG:**
     - Caption: 1 line English, comment bait. Example: "Rate this move 1-10 👇"
-    - Hashtags: 3 ota matra. #dance #usa #fyp - yo 3 ta use gar.
+    - Hashtags: 3 ota matra. #dance #usa #fyp
 
     **6. UPLOAD TIME:**
-    - Nepal Time: {post_time} = US New York X AM. "YES/NO" post garne ki nai bhan.
+    - Nepal Time: {post_time} = US New York kati baje hunchha calculate gar. "YES/NO" post garne ki nai bhan.
 
     **7. FINAL SCORE: X/100 + If 1M views = $XXXX earning**
     Hype ma bhan, MrBeast jastai.
@@ -114,7 +112,6 @@ if uploaded_file:
         with st.spinner('Beat, Pose, Face, RPM sabai analyze gardai chu... 30 sec'):
             tempo, beats, energy, face, duration, fps = analyze_video(video_path)
 
-        # Graph
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=list(range(len(energy))), y=energy, mode='lines+markers', name='Energy'))
         for beat in beats:
@@ -123,7 +120,6 @@ if uploaded_file:
         fig.update_layout(title="Second-by-Second KUNDALI: Red=Cut, Green=Beat", xaxis_title="Seconds")
         st.plotly_chart(fig)
 
-        # AI Report
         st.subheader("💎 PURA KUNDALI REPORT")
         report = generate_kundali(tempo, beats, energy, face, duration, audio_used, post_time)
         st.markdown(report)
