@@ -1,1 +1,0 @@
-# himalayan-ai-ad
